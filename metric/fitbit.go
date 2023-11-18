@@ -45,6 +45,7 @@ func NewFitbitClient(ctx context.Context, clientID, clientSecret string, accessT
 }
 
 func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]FitbitHeartrateRecord, error) {
+	date = date.UTC().Truncate(time.Hour * 24)
 	tokenSource := c.oauthConf.TokenSource(ctx, c.token)
 	client := oauth2.NewClient(ctx, tokenSource)
 	userID := "-"
@@ -77,14 +78,13 @@ func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]Fitb
 	}
 
 	res := []FitbitHeartrateRecord{}
-	beginningOfDay := date.Round(time.Hour * 24)
 	for _, v := range intraday.ActivitiesHeartIntraday.DataSet {
 		t, err := lib.ParseTime(v.Time)
 		if err != nil {
 			return nil, fmt.Errorf("parse time: %w", err)
 		}
 		record := FitbitHeartrateRecord{
-			Time:  beginningOfDay.Add(t),
+			Time:  date.Add(t),
 			Value: v.Value,
 		}
 		res = append(res, record)
