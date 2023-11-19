@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  heartbeatmon
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: heartbeatmon
+    Description: Enter the name of S3 bucket to store credentials.
+
+Resources:
+  RefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      ImageConfig:
+        EntryPoint: ["/app/lambda"]
+      Architectures:
+        - x86_64
+      Role: !GetAtt HeartbeatmonIamRole.Arn
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: ../../
+      DockerTag: heartbeatmon
+
+  HeartbeatmonIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: lambda-log
+          PolicyDocument: {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:*:*:*"
+                }
+              ]
+            }
+        - PolicyName: heartbeatmon-policy
+          PolicyDocument: {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "s3:*",
+                      "s3-object-lambda:*"
+                    ],
+                    "Resource": [
+                      "Fn::Sub": "${HeartbeatmonBucket.Arn}",
+                      "Fn::Sub": "${HeartbeatmonBucket.Arn}/*"
+                    ]
+                  }
+                ]
+              }
+
+  HeartbeatmonBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Ref: S3BucketName
+
+Outputs:
+  RefreshFunction:
+    Description: "heartbeatmon refresh function ARN"
+    Value: !GetAtt RefreshFunction.Arn
+  HeartbeatmonIamRole:
+    Description: "IAM Role created for heartbeatmon"
+    Value: !GetAtt HeartbeatmonIamRole.Arn
+  HeartbeatmonBucket:
+    Description: "S3 bucket created for heartbeatmon"
+    Value: !GetAtt HeartbeatmonBucket.Arn
