@@ -74,6 +74,19 @@ Resources:
       BucketName:
         Ref: S3BucketName
 
+  HeartbeatmonRefreshRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: "rate(10 minutes)"
+      Targets:
+        - Arn: !GetAtt RefreshFunction.Arn
+          Id: !Ref S3BucketName
+          Input: !Sub |
+            {
+              "region": "ap-northeast-1",
+              "bucketName": "${S3BucketName}"
+            }
+
 Outputs:
   RefreshFunction:
     Description: "heartbeatmon refresh function ARN"
