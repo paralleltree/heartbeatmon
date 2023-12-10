@@ -44,6 +44,10 @@ func NewFitbitClient(ctx context.Context, clientID, clientSecret string, accessT
 	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com")
 }
 
+func (c *FitbitClient) GetToken() *oauth2.Token {
+	return c.token
+}
+
 func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]FitbitHeartrateRecord, error) {
 	date = date.UTC().Truncate(time.Hour * 24)
 	tokenSource := c.oauthConf.TokenSource(ctx, c.token)
