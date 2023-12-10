@@ -54,7 +54,7 @@ func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]Fitb
 	client := oauth2.NewClient(ctx, tokenSource)
 	userID := "-"
 	detailLevel := "1min"
-	endpoint := fmt.Sprintf("%s/1/user/%s/activities/heart/date/%s/1d/%s.json", c.baseURL, userID, date.Format("2006-01-02"), detailLevel)
+	endpoint := fmt.Sprintf("%s/1/user/%s/activities/heart/date/%s/1d/%s.json?timezone=UTC", c.baseURL, userID, date.Format("2006-01-02"), detailLevel)
 
 	resp, err := client.Get(endpoint)
 	if err != nil {
