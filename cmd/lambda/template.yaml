@@ -24,6 +24,14 @@ Resources:
       DockerContext: ../../
       DockerTag: heartbeatmon
 
+  RefreshFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: !GetAtt RefreshFunction.Arn
+        Principal: "events.amazonaws.com"
+        SourceArn: !GetAtt HeartbeatmonRefreshRule.Arn
+
   HeartbeatmonIamRole:
     Type: AWS::IAM::Role
     Properties:
