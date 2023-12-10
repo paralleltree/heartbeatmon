@@ -16,6 +16,24 @@ const (
 	FitbitTokenURL = "https://api.fitbit.com/oauth2/token"
 )
 
+type FitbitRequestError struct {
+	URL        string
+	StatusCode int
+	RawBody    string
+	Errors     []struct {
+		ErrorType string `json:"errorType"`
+		Message   string `json:"message"`
+	} `json:"errors"`
+}
+
+func (err *FitbitRequestError) Error() string {
+	if len(err.Errors) == 0 {
+		return fmt.Sprintf("failed to request: %s", err.URL)
+	}
+	e := err.Errors[0]
+	return fmt.Sprintf("failed to request: %s (%s): %s", err.URL, e.ErrorType, e.Message)
+}
+
 type FitbitHeartrateRecord struct {
 	Time  time.Time
 	Value int
@@ -65,6 +83,19 @@ func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]Fitb
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case 400, 401:
+		errBody := FitbitRequestError{
+			URL:        endpoint,
+			StatusCode: resp.StatusCode,
+			RawBody:    string(body),
+		}
+		if err := json.Unmarshal(body, &errBody); err != nil {
+			return nil, fmt.Errorf("parse error response")
+		}
+		return nil, &errBody
 	}
 
 	type fitbitHeartRateIntraday struct {

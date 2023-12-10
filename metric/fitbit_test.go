@@ -13,6 +13,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// {"success":false,"errors":[{"errorType":"expired_token","message":"Access token expired: XXXX. Visit https://dev.fitbit.com/docs/oauth2 for more information on the Fitbit Web API authorization process."}]}
+
 func TestFitbitClient_GetHeartrate(t *testing.T) {
 	ctx := context.Background()
 	jstTz := time.FixedZone("Asia/Tokyo", 9*60*60)
