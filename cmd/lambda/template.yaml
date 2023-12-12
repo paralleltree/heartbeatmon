@@ -8,6 +8,11 @@ Parameters:
     Type: String
     Default: heartbeatmon
     Description: Enter the name of S3 bucket to store credentials.
+  HeartbeatDistributionDomain:
+    Type: String
+  HeartbeatDistributionDomainCertificateArn:
+    Type: String
+    Description: Arn of surving heartbeat certificate in us-east-1 region.
 
 Resources:
   RefreshFunction:
@@ -95,6 +100,73 @@ Resources:
               "bucketName": "${S3BucketName}"
             }
 
+  HeartbeatDistributionBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref HeartbeatmonBucket
+      PolicyDocument:
+        Statement:
+          - Action: 's3:GetObject'
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${S3BucketName}/latest.json'
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${HeartbeatDistribution}'
+
+  HeartbeatDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultCacheBehavior:
+          AllowedMethods: [HEAD, GET]
+          CachedMethods: [HEAD, GET]
+          CachePolicyId: !Ref HeartbeatDistributionCachePolicy
+          TargetOriginId: !Sub heartbeatmon-${S3BucketName}-origin
+          ViewerProtocolPolicy: redirect-to-https
+        Origins:
+          - Id: !Sub heartbeatmon-${S3BucketName}-origin
+            DomainName: !GetAtt HeartbeatmonBucket.DomainName
+            OriginAccessControlId: !Ref HeartbeatmonOAC
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        Aliases:
+          - !Ref HeartbeatDistributionDomain
+        ViewerCertificate:
+          AcmCertificateArn: !Ref HeartbeatDistributionDomainCertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        DefaultRootObject: latest.json
+
+  HeartbeatDistributionCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub HeartbeatmonDistributionCachePolicy-${S3BucketName}
+        DefaultTTL: 60
+        MaxTTL: 300
+        MinTTL: 60
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  HeartbeatmonOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub HeartbeatmonOAC-${S3BucketName}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
 Outputs:
   RefreshFunction:
     Description: "heartbeatmon refresh function ARN"
@@ -105,3 +177,6 @@ Outputs:
   HeartbeatmonBucket:
     Description: "S3 bucket created for heartbeatmon"
     Value: !GetAtt HeartbeatmonBucket.Arn
+  HeartbeatDistribution:
+    Description: Heartbeat distribution domain name
+    Value: !GetAtt HeartbeatDistribution.DomainName
