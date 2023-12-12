@@ -50,7 +50,8 @@ func newFitbitClient(
 	clientID, clientSecret string, accessToken, refreshToken string,
 	baseURL string,
 ) *FitbitClient {
-	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken}
+	// set current time to force refresh access token
+	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken, Expiry: time.Now()}
 	return &FitbitClient{
 		baseURL:   baseURL,
 		token:     &token,
