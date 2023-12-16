@@ -12,20 +12,22 @@ import (
 )
 
 type s3Store struct {
-	sess       *session.Session
-	bucketName string
-	key        string
+	sess        *session.Session
+	bucketName  string
+	key         string
+	contentType string
 }
 
-func NewS3Store(region string, bucketName string, key string) (*s3Store, error) {
+func NewS3Store(region string, bucketName string, key string, contentType string) (*s3Store, error) {
 	sess, err := session.NewSession(&aws.Config{Region: &region})
 	if err != nil {
 		return nil, fmt.Errorf("initialize new session: %w", err)
 	}
 	return &s3Store{
-		sess:       sess,
-		bucketName: bucketName,
-		key:        key,
+		sess:        sess,
+		bucketName:  bucketName,
+		key:         key,
+		contentType: contentType,
 	}, nil
 }
 
@@ -42,7 +44,7 @@ func (s *s3Store) Load(ctx context.Context) ([]byte, error) {
 func (s *s3Store) Save(ctx context.Context, body []byte) error {
 	u := s3manager.NewUploader(s.sess)
 	reader := bytes.NewReader(body)
-	input := &s3manager.UploadInput{Bucket: &s.bucketName, Key: &s.key, Body: reader}
+	input := &s3manager.UploadInput{Bucket: &s.bucketName, Key: &s.key, Body: reader, ContentType: &s.contentType}
 	if _, err := u.UploadWithContext(ctx, input); err != nil {
 		return fmt.Errorf("upload object: %w", err)
 	}

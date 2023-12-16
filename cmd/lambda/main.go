@@ -18,15 +18,15 @@ func main() {
 }
 
 func handler(ctx context.Context, msg message) error {
-	clientCredentialStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "clientCredential.json")
+	clientCredentialStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "clientCredential.json", "application/json")
 	if err != nil {
 		return err
 	}
-	accessTokenStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "accessToken.json")
+	accessTokenStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "accessToken.json", "application/json")
 	if err != nil {
 		return err
 	}
-	recordStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "latest.json")
+	recordStore, err := persistence.NewS3Store(msg.Region, msg.BucketName, "latest.json", "application/json")
 	if err != nil {
 		return err
 	}
