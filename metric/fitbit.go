@@ -51,13 +51,10 @@ func newFitbitClient(
 	ctx context.Context,
 	clientID, clientSecret string, accessToken, refreshToken string,
 	baseURL string,
-	forceRefreshToken bool,
+	expiresAt time.Time,
 ) *FitbitClient {
 	// set current time to force refresh access token
-	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken}
-	if forceRefreshToken {
-		token.Expiry = time.Now()
-	}
+	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken, Expiry: expiresAt}
 	return &FitbitClient{
 		baseURL:   baseURL,
 		token:     &token,
@@ -65,8 +62,13 @@ func newFitbitClient(
 	}
 }
 
+// Returns new FitbitClient that forces refreshing access token
 func NewFitbitClient(ctx context.Context, clientID, clientSecret string, accessToken, refreshToken string) *FitbitClient {
-	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com", true)
+	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com", time.Now())
+}
+
+func NewFitbitClientWithExpiry(ctx context.Context, clientID, clientSecret string, accessToken, refreshToken string, expiresAt time.Time) *FitbitClient {
+	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com", expiresAt)
 }
 
 func (c *FitbitClient) GetToken() *oauth2.Token {
