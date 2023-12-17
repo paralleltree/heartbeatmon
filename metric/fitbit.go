@@ -16,6 +16,26 @@ const (
 	FitbitTokenURL = "https://api.fitbit.com/oauth2/token"
 )
 
+type FitbitRequestError struct {
+	URL        string
+	StatusCode int
+	RawBody    string
+	Errors     []FitbitRequestErrorEntry `json:"errors"`
+}
+
+type FitbitRequestErrorEntry struct {
+	ErrorType string `json:"errorType"`
+	Message   string `json:"message"`
+}
+
+func (err *FitbitRequestError) Error() string {
+	if len(err.Errors) == 0 {
+		return fmt.Sprintf("failed to request: %s", err.URL)
+	}
+	e := err.Errors[0]
+	return fmt.Sprintf("failed to request: %s (%s): %s", err.URL, e.ErrorType, e.Message)
+}
+
 type FitbitHeartrateRecord struct {
 	Time  time.Time
 	Value int
@@ -31,9 +51,13 @@ func newFitbitClient(
 	ctx context.Context,
 	clientID, clientSecret string, accessToken, refreshToken string,
 	baseURL string,
+	forceRefreshToken bool,
 ) *FitbitClient {
 	// set current time to force refresh access token
-	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken, Expiry: time.Now()}
+	token := oauth2.Token{AccessToken: accessToken, RefreshToken: refreshToken}
+	if forceRefreshToken {
+		token.Expiry = time.Now()
+	}
 	return &FitbitClient{
 		baseURL:   baseURL,
 		token:     &token,
@@ -42,7 +66,7 @@ func newFitbitClient(
 }
 
 func NewFitbitClient(ctx context.Context, clientID, clientSecret string, accessToken, refreshToken string) *FitbitClient {
-	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com")
+	return newFitbitClient(ctx, clientID, clientSecret, accessToken, refreshToken, "https://api.fitbit.com", true)
 }
 
 func (c *FitbitClient) GetToken() *oauth2.Token {
@@ -66,6 +90,23 @@ func (c *FitbitClient) GetHeartrate(ctx context.Context, date time.Time) ([]Fitb
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("read response body: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case 400, 401:
+		rawErr := struct {
+			Errors []FitbitRequestErrorEntry `json:"errors"`
+		}{}
+		if err := json.Unmarshal(body, &rawErr); err != nil {
+			return nil, fmt.Errorf("parse error response")
+		}
+		errBody := FitbitRequestError{
+			URL:        endpoint,
+			StatusCode: resp.StatusCode,
+			RawBody:    string(body),
+			Errors:     rawErr.Errors,
+		}
+		return nil, &errBody
 	}
 
 	type fitbitHeartRateIntraday struct {
